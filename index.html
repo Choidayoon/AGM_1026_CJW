@@ -840,6 +840,23 @@
     console.log("[track] cta_click:", label);
   }
 
+  // CTA 노출: 버튼이 50% 이상 보인 채로 1초가 지나면 페이지뷰당 1회 기록
+  // 클릭률(CTR) = cta_click ÷ cta_impression (cta_position 별)
+  const IMPRESSION_MS = 1000;
+  const impressionTimers = new Map();
+  const ctaIO = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      const el = e.target;
+      if (!e.isIntersecting) { clearTimeout(impressionTimers.get(el)); return; }
+      impressionTimers.set(el, setTimeout(() => {
+        ctaIO.unobserve(el);
+        if (amp) amp.track("cta_impression", { cta_position: el.dataset.cta, os: detectOS() });
+        console.log("[track] cta_impression:", el.dataset.cta);
+      }, IMPRESSION_MS));
+    });
+  }, { threshold: 0.5 });
+  document.querySelectorAll("[data-cta]").forEach(el => ctaIO.observe(el));
+
   async function copyCode(silent) {
     const v = refInput.value.trim();
     if (!v) { if (!silent) { showToast("추천인 코드를 입력해주세요"); refInput.focus(); } return false; }
